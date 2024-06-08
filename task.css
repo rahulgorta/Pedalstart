@@ -1,0 +1,18 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-body {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.modal-content {
+    border-radius: 15px;
+}
