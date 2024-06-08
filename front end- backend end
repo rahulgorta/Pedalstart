@@ -1,0 +1,75 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const taskList = document.getElementById('taskList');
+    const addTaskForm = document.getElementById('addTaskForm');
+
+    const apiUrl = 'http://localhost:3000/tasks';
+
+    async function fetchTasks() {
+        const response = await fetch(apiUrl);
+        const tasks = await response.json();
+        taskList.innerHTML = '';
+        tasks.forEach(task => {
+            addTaskToDOM(task);
+        });
+    }
+
+    function addTaskToDOM(task) {
+        const taskItem = document.createElement('li');
+        taskItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+        taskItem.innerHTML = `
+            <div>
+                <h5>${task.title}</h5>
+                <p>${task.description}</p>
+                <small>Due: ${new Date(task.dueDate).toLocaleDateString()}</small>
+            </div>
+            <div>
+                <button class="btn btn-info btn-sm edit-task" data-id="${task._id}">Edit</button>
+                <button class="btn btn-danger btn-sm delete-task" data-id="${task._id}">Delete</button>
+            </div>
+        `;
+        taskList.appendChild(taskItem);
+    }
+
+    addTaskForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('taskTitle').value;
+        const description = document.getElementById('taskDescription').value;
+        const dueDate = document.getElementById('taskDueDate').value;
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title, description, dueDate })
+        });
+
+        const newTask = await response.json();
+        addTaskToDOM(newTask);
+        $('#addTaskModal').modal('hide');
+        addTaskForm.reset();
+    });
+
+    taskList.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('delete-task')) {
+            const id = e.target.getAttribute('data-id');
+            await fetch(`${apiUrl}/${id}`, {
+                method: 'DELETE'
+            });
+            e.target.parentElement.parentElement.remove();
+        } else if (e.target.classList.contains('edit-task')) {
+            const id = e.target.getAttribute('data-id');
+            const response = await fetch(`${apiUrl}/${id}`);
+            const task = await response.json();
+
+            document.getElementById('taskTitle').value = task.title;
+            document.getElementById('taskDescription').value = task.description;
+            document.getElementById('taskDueDate').value = new Date(task.dueDate).toISOString().split('T')[0];
+
+            $('#addTaskModal').modal('show');
+            taskList.removeChild(e.target.parentElement.parentElement);
+        }
+    });
+
+    fetchTasks();
+});
