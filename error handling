@@ -1,0 +1,130 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+// Create express app
+const app = express();
+
+// Middleware
+app.use(bodyParser.json());
+app.use(cors());
+
+// MongoDB connection
+mongoose.connect('mongodb://localhost:27017/taskmanager', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => {
+    console.log('Connected to MongoDB');
+}).catch(err => {
+    console.error('Failed to connect to MongoDB', err);
+});
+
+// Task Schema
+const TaskSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true
+    },
+    description: {
+        type: String,
+        required: true
+    },
+    dueDate: {
+        type: Date,
+        required: true
+    }
+});
+
+const Task = mongoose.model('Task', TaskSchema);
+
+// Routes
+
+// Retrieve all tasks
+app.get('/tasks', async (req, res, next) => {
+    try {
+        const tasks = await Task.find();
+        res.json(tasks);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// Create a new task
+app.post('/tasks', async (req, res, next) => {
+    const task = new Task({
+        title: req.body.title,
+        description: req.body.description,
+        dueDate: req.body.dueDate
+    });
+
+    try {
+        const newTask = await task.save();
+        res.status(201).json(newTask);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// Retrieve a single task by its ID
+app.get('/tasks/:id', getTask, (req, res) => {
+    res.json(res.task);
+});
+
+// Update an existing task
+app.put('/tasks/:id', getTask, async (req, res, next) => {
+    if (req.body.title != null) {
+        res.task.title = req.body.title;
+    }
+    if (req.body.description != null) {
+        res.task.description = req.body.description;
+    }
+    if (req.body.dueDate != null) {
+        res.task.dueDate = req.body.dueDate;
+    }
+
+    try {
+        const updatedTask = await res.task.save();
+        res.json(updatedTask);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// Delete a task
+app.delete('/tasks/:id', getTask, async (req, res, next) => {
+    try {
+        await res.task.remove();
+        res.json({ message: 'Task deleted' });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// Middleware to get a task by ID
+async function getTask(req, res, next) {
+    let task;
+    try {
+        task = await Task.findById(req.params.id);
+        if (task == null) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+    } catch (err) {
+        return res.status(400).json({ message: 'Invalid task ID' });
+    }
+
+    res.task = task;
+    next();
+}
+
+// Global Error Handling Middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ message: 'An internal server error occurred' });
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
